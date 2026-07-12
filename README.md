@@ -1,5 +1,6 @@
 # Plato Engine Block — Zig Edition
 
+> **Plato Engine Block — a sub-400-line room runtime for agent-space interaction.**  
 > The Plato room runtime, rewritten in Zig — demonstrating why Zig is the superior bare-metal language for Plato.
 
 This is the Zig implementation of the **Plato Engine Block**: a deterministic, zero-hidden-control-flow room runtime that manages sensors, actuators, alarms, and ternary logic for smart environments. It joins the Plato Engine Block family alongside the [Rust](https://github.com/SuperInstance/plato-engine-block) and [C](https://github.com/SuperInstance/plato-engine-block-c) implementations.
@@ -312,8 +313,25 @@ The Plato Engine doesn't choose — it works with *all of them*.
 
 MIT
 
+## PLATO Engine Block Family
+
+This is the Zig implementation of the Plato Engine Block. The complete family:
+
+| Implementation | Language | Repo | Focus |
+|---|---|---|---|
+| **Zig** ← you are here | Zig | [plato-engine-block-zig](https://github.com/SuperInstance/plato-engine-block-zig) | Comptime ternary packing, cross-compile, zero hidden control flow |
+| **C Reference** | C99 | [plato-engine-block-c](https://github.com/SuperInstance/plato-engine-block-c) | Embedded, bare-metal, zero heap alloc |
+| **Rust (Original)** | Rust | [plato-engine-block](https://github.com/SuperInstance/plato-engine-block) | `no_std` + alloc, builder pattern, tokio server |
+| **Elixir/OTP** | Elixir | [plato-engine-block-elixir](https://github.com/SuperInstance/plato-engine-block-elixir) | BEAM supervision trees, fault tolerance, hot reload |
+| **Python Core** | Python | [plato-core](https://github.com/SuperInstance/plato-core) | Foundation types, mesh registry, training tiles |
+| **Runtime Kernel** | Rust | [plato-runtime-kernel](https://github.com/SuperInstance/plato-runtime-kernel) | Spatial model: tensor grid, batons, assertion traps |
+| **Server** | Python | [plato-server](https://github.com/SuperInstance/plato-server) | Knowledge tiles, fleet sync via Matrix, HTTP API |
+
+**Specs & Guides:**
+- 📜 [PLATO Wire Protocol](https://github.com/SuperInstance/AI-Writings/blob/main/PLATO_WIRE_PROTOCOL.md)
+- 📖 [PLATO Master Guide](https://github.com/SuperInstance/AI-Writings/blob/main/PLATO_MASTER_GUIDE.md)
+- 🗺️ [PLATO Ecosystem Map](https://github.com/SuperInstance/AI-Writings/blob/main/PLATO_ECOSYSTEM_MAP.md)
+
 ## See Also
 
-- [Plato Engine Block (Rust)](https://github.com/SuperInstance/plato-engine-block) — The original Rust implementation
-- [Plato Engine Block (C)](https://github.com/SuperInstance/plato-engine-block-c) — The C implementation
 - [Zig Language](https://ziglang.org/) — The Zig programming language
