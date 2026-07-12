@@ -46,8 +46,8 @@ pub fn main() !void {
     room.addSensor("humidity", .humidity, 50.0);
     room.addSensor("co2", .co2, 400.0);
     room.addSensor("light", .light, 300.0);
-    room.setAlarm("temperature", 30.0, .above, "Temperature too high!");
-    room.setAlarm("co2", 1000.0, .above, "CO2 level dangerous!");
+    room.setAlarm("temperature", 30.0, .greater_than, "Temperature too high!");
+    room.setAlarm("co2", 1000.0, .greater_than, "CO2 level dangerous!");
 
     var rng = std.Random.DefaultPrng.init(42);
     for (0..20) |i| {
@@ -80,7 +80,8 @@ pub fn main() !void {
 
     // Demo 5: Protocol parsing
     try stdout.print("\n▸ Protocol Parser\n", .{});
-    const cmds = [_][]const u8{ "tick", "history 5", "actuator pump 1", "subscribe temperature", "help", "quit" };
+
+    const cmds = [_][]const u8{ "tick", "history 5", "actuator pump 1", "alarm list", "alarm set overheat temp > 30 30", "subscribe", "help", "quit" };
     for (cmds) |cmd| {
         const parsed = protocol.parse(cmd);
         try stdout.print("  \"{s}\" → {s}\n", .{ cmd, @tagName(parsed) });

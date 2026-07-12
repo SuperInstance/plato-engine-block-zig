@@ -61,12 +61,41 @@ test "engine history recording" {
     try std.testing.expect(hist.items[1] == 22.0);
 }
 
+test "engine per-tick snapshot history" {
+    const alloc = std.testing.allocator;
+    var eng = try engine.PlatoEngine.init(alloc, 16);
+    defer eng.deinit();
+    eng.addSensor("temp", .temperature, 20.0);
+    eng.addSensor("hum", .humidity, 50.0);
+
+    eng.updateSensor("temp", 21.0);
+    eng.updateSensor("hum", 51.0);
+    eng.tick();
+    eng.updateSensor("temp", 22.0);
+    eng.updateSensor("hum", 52.0);
+    eng.tick();
+
+    // Should have 2 tick snapshots
+    try std.testing.expect(eng.tick_snapshots.items.len == 2);
+
+    // First snapshot should have temp=21.0, hum=51.0
+    const snap0 = eng.tick_snapshots.items[0];
+    try std.testing.expectEqual(@as(usize, 2), snap0.sensor_values.items.len);
+    try std.testing.expect(snap0.sensor_values.items[0] == 21.0);
+    try std.testing.expect(snap0.sensor_values.items[1] == 51.0);
+
+    // Second snapshot should have temp=22.0, hum=52.0
+    const snap1 = eng.tick_snapshots.items[1];
+    try std.testing.expect(snap1.sensor_values.items[0] == 22.0);
+    try std.testing.expect(snap1.sensor_values.items[1] == 52.0);
+}
+
 test "engine alarm above triggers" {
     const alloc = std.testing.allocator;
     var eng = try engine.PlatoEngine.init(alloc, 4);
     defer eng.deinit();
     eng.addSensor("temp", .temperature, 20.0);
-    eng.setAlarm("temp", 30.0, .above, "Too hot!");
+    eng.setAlarm("temp", 30.0, .greater_than, "Too hot!");
     eng.updateSensor("temp", 35.0);
     eng.tick();
     try std.testing.expect(eng.isAlarmTriggered("temp"));
@@ -77,7 +106,7 @@ test "engine alarm does not trigger when below threshold" {
     var eng = try engine.PlatoEngine.init(alloc, 4);
     defer eng.deinit();
     eng.addSensor("temp", .temperature, 20.0);
-    eng.setAlarm("temp", 30.0, .above, "Too hot!");
+    eng.setAlarm("temp", 30.0, .greater_than, "Too hot!");
     eng.updateSensor("temp", 25.0);
     eng.tick();
     try std.testing.expect(!eng.isAlarmTriggered("temp"));
@@ -88,10 +117,48 @@ test "engine alarm below triggers" {
     var eng = try engine.PlatoEngine.init(alloc, 4);
     defer eng.deinit();
     eng.addSensor("temp", .temperature, 20.0);
-    eng.setAlarm("temp", 10.0, .below, "Too cold!");
+    eng.setAlarm("temp", 10.0, .less_than, "Too cold!");
     eng.updateSensor("temp", 5.0);
     eng.tick();
     try std.testing.expect(eng.isAlarmTriggered("temp"));
+}
+
+test "engine alarm cooldown" {
+    const alloc = std.testing.allocator;
+    var eng = try engine.PlatoEngine.init(alloc, 4);
+    defer eng.deinit();
+    eng.addSensor("temp", .temperature, 20.0);
+    eng.setAlarmFull("overheat", "temp", 30.0, .greater_than, 5);
+    eng.updateSensor("temp", 35.0);
+    eng.tick();
+    try std.testing.expect(eng.isAlarmTriggered("temp"));
+
+    // After first trigger, cooldown should be active
+    // Alarm should still show as active but cooldown is counting down
+    const alarm = &eng.alarms.items[0];
+    try std.testing.expect(alarm.cooldown_ticks_remaining > 0);
+    try std.testing.expect(alarm.last_triggered != null);
+}
+
+test "engine alarm with all conditions" {
+    const alloc = std.testing.allocator;
+    var eng = try engine.PlatoEngine.init(alloc, 4);
+    defer eng.deinit();
+    eng.addSensor("temp", .temperature, 20.0);
+
+    // Test all 6 conditions
+    eng.setAlarmFull("a1", "temp", 20.0, .equal, 1);
+    eng.setAlarmFull("a2", "temp", 21.0, .not_equal, 1);
+    eng.setAlarmFull("a3", "temp", 21.0, .less_equal, 1);
+    eng.setAlarmFull("a4", "temp", 19.0, .greater_equal, 1);
+
+    eng.tick();
+
+    // temp=20: equal(20)→true, not_equal(21)→true, less_equal(21)→true, greater_equal(19)→true
+    try std.testing.expect(eng.alarms.items[0].state == .active); // equal 20==20
+    try std.testing.expect(eng.alarms.items[1].state == .active); // not_equal 20!=21
+    try std.testing.expect(eng.alarms.items[2].state == .active); // less_equal 20<=21
+    try std.testing.expect(eng.alarms.items[3].state == .active); // greater_equal 20>=19
 }
 
 test "engine actuator set state" {
@@ -111,6 +178,17 @@ test "engine subscribe" {
     try std.testing.expect(eng.subscribers.items.len == 1);
 }
 
+test "engine lastTimestamp" {
+    const alloc = std.testing.allocator;
+    var eng = try engine.PlatoEngine.init(alloc, 4);
+    defer eng.deinit();
+    eng.addSensor("temp", .temperature, 20.0);
+    try std.testing.expect(eng.lastTimestamp() == 0);
+    eng.tick();
+    const ts = eng.lastTimestamp();
+    try std.testing.expect(ts > 0); // Should have real Unix timestamp after tick
+}
+
 // ─── Integration test: full room simulation ─────────────────────
 
 test "integration: 50 tick room simulation" {
@@ -123,8 +201,8 @@ test "integration: 50 tick room simulation" {
     eng.addSensor("co2", .co2, 400.0);
     eng.addSensor("light", .light, 300.0);
 
-    eng.setAlarm("temperature", 30.0, .above, "Too hot!");
-    eng.setAlarm("co2", 1000.0, .above, "CO2 dangerous!");
+    eng.setAlarm("temperature", 30.0, .greater_than, "Too hot!");
+    eng.setAlarm("co2", 1000.0, .greater_than, "CO2 dangerous!");
     eng.addActuator("hvac", 0);
     eng.addActuator("ventilation", 0);
     eng.subscribe("temperature");
@@ -161,6 +239,9 @@ test "integration: 50 tick room simulation" {
 
     // With this seed, we should have some alarm fires
     try std.testing.expect(alarm_fires > 0);
+
+    // Should have 50 tick snapshots
+    try std.testing.expect(eng.tick_snapshots.items.len == 50);
 }
 
 test "integration: ternary packing in engine context" {
